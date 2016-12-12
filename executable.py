@@ -3,8 +3,6 @@ from ipaddress import IPv4Network
 from tkinter import filedialog, Tk
 from os import getcwd
 
-print("Brandon Sucks")
-
 def Main():
     """ Main Program """
 
