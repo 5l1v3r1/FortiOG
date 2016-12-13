@@ -11,6 +11,6 @@ A valid .txt entry is either an IP/CIDR (ex. 192.168.1.0/24), an IP/Netmask (ex.
 3. Custom Name for the object
 4. Interface to attach object to
 
-.csv\'s should be formatted similarly to an Excel .csv
+.csv's should be formatted similarly to an Excel .csv
 
 Requires Python 3
