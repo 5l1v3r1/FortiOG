@@ -10,8 +10,9 @@ def Main():
     #Parser for user CLI interaction
     parser = ArgumentParser(
         description='Provided a list of IP addresses or URL\'s, format the proper fortigate commands to create them '
-                    'and output to a file within the current working directory. DISCLAIMER: If you run something on '
-                    'a firewall that you shouldn\'t have, we are NOT responsible. READ YOUR CODE BEFORE YOU PLACE IT.',
+                    'and output to a file within the current working directory.\n'
+                    'DISCLAIMER: If you run something on a firewall that you shouldn\'t have, '
+                    'we are NOT responsible. READ YOUR CODE BEFORE YOU PLACE IT!!!',
         usage='VDOM input_file.txt or .csv',
         formatter_class=RawTextHelpFormatter)
     parser.add_argument(
@@ -19,13 +20,13 @@ def Main():
     parser.add_argument(
         'File', help='Accepts two kinds of files, .txt & .csv. '
         'Each type should be formatted differently.\n'
-        '.txt: Each entry should be on its own line, and have no additional characters, '
-        ' formatted as IP/CIDR, IP/Netmask or a URL.\n'
-        '.csv: Should consist of 4 fields.  The first is required, the rest are optional:\n\n'
+        '.txt: Each entry should be on its own line, formatted as IP/CIDR, IP/Netmask or a URL.\n'
+        '.csv: Should consist of 5 fields.  The first is required, the rest are optional:\n\n'
         'IP/CIDR or URL (the CIDR prefix is optional, and just an IP can be accepted)\n'
         'Netmask (needed if you do not provide a CIDR in the previous field)\n'
         'Custom Name for the object\n'
-        'Interface to attach object to\n\n'
+        'Interface to associate object to\n'
+        'Comment to label the object\n\n'
         '.csv\'s should be formatted similarly to an Excel .csv')
     args = parser.parse_args()
 
@@ -37,6 +38,7 @@ def Main():
         txt_mode(args.VDOM, args.File)
     elif csv_file.search(args.File) is not None:
         csv_mode(args.VDOM, args.File)
+
     else:
         print("Please retry with a valid file type")
 
@@ -92,16 +94,30 @@ def csv_mode(vdom, file_in):
     with open(file_in, 'r') as input_file:
         params = reader(input_file)
         for row in params:
+            ip_name = None
+            #Create a 5 element array if the user did not provide a file with enough rows
+            if len(row) != 5:
+                for i in range(0, (5 - len(row))):
+                    row.append('')
+
+            #Exit if there are too many rows in proivded .csv
+            if len(row) > 5:
+                print("error: please specify a .csv with 5 or less fields")
+                raise SystemExit
+
             #Check to see if the user provides a subnet mask in cell column 2
             if row[1] is not '' and ip_regex.search(row[1]) is not None:
                 ip_addr = '%s/%s' % (row[0], row[1])
+                ip_name = IPv4Network(ip_addr)
             else:
                 ip_addr = row[0]
             #Check to see if the user provides a custom name
             if row[2] is not '':
                 name = row[2]
+            elif ip_name is not None:
+                name = ip_name
             else:
-                name = None
+                name = row[0]
             #Check to see if the user provides an interface,
             #and make sure they also provide the necessary interface parameters
             if row[3] is not '':
@@ -199,7 +215,7 @@ def generate_name(name, output_file):
     output_file -- The file to be written to
     """
 
-    output_file.write("edit \"%s\"\n" % str(name))
+    output_file.write("edit \"%s\"\n" % name)
 
 def generate_interface(interface, output_file):
     """
