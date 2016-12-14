@@ -1,9 +1,10 @@
 from argparse import ArgumentParser
-from ipaddress import IPv4Network
 from tkinter import filedialog, Tk
 from os import getcwd
+from ipaddress import IPv4Network
 
-def Main():
+
+def main():
     """ Main Program """
 
     parser = ArgumentParser(
@@ -16,21 +17,18 @@ def Main():
                        'no file is given, the file explorer will prompt you to select one.')
     args = parser.parse_args()
 
+    # If file argument is not given, open file explorer.
     if args.File:
-        with open(args.File, 'r') as input_file:
-            array = input_file.read().splitlines()
+        array = withopen(args.File)
     else:
-        root = Tk()
-        root.withdraw()
-        file_path = filedialog.askopenfilename()
-        with open(file_path, 'r') as input_file:
-            array = input_file.read().splitlines()
+        array = withopen(askopenfilename())
 
     with open(args.VDOM + '.txt', 'w') as output_file:
-        output_file.write("config vdom\n")
-        output_file.write("edit %s\n" % str(args.VDOM))
-        output_file.write("config firewall address\n")
+        output_file.write('config vdom\n')
+        output_file.write('edit %s\n' % str(args.VDOM))
+        output_file.write('config firewall address\n')
 
+        # If valid IP, generate an IP address object. If not, generate URL.
         for i in range(0, len(array)):
             try:
                 ip_addr = IPv4Network(array[i])
@@ -39,7 +37,33 @@ def Main():
                 url = array[i]
                 generateurl(url, output_file)
 
-    print('Your file has been saved to ' + getcwd())
+        print('Your file has been saved to ' + getcwd())
+
+
+def askopenfilename():
+    """
+    Opens file explorer to select an input file.
+    """
+    root = Tk()
+    root.withdraw()  # Prevents empty root window from displaying.
+    file_path = filedialog.askopenfilename()
+    return file_path
+
+
+def withopen(file):
+    """
+    Turn an input_file into a properly formatted list.
+
+    file -- Input text file. Defined via command line argument or graphical file explorer.
+    """
+    try:
+        with open(file, 'r') as input_file:
+            array = input_file.read().splitlines()
+        return array
+    except FileNotFoundError:
+        print('No file selected.')
+        exit()
+
 
 def generateip(ip_addr, output_file):
     """
@@ -48,11 +72,11 @@ def generateip(ip_addr, output_file):
     ip_addr -- IP address network object
     output_file -- an output text file
     """
-    output_file.write("edit \"%s\"\n" % str(ip_addr.with_prefixlen))
-    output_file.write("set color 1\n")
-    output_file.write("set subnet %s %s\n" %
+    output_file.write('edit \'%s\'\n' % str(ip_addr.with_prefixlen))
+    output_file.write('set color 1\n')
+    output_file.write('set subnet %s %s\n' %
                       (str(ip_addr.network_address), str(ip_addr.netmask)))
-    output_file.write("next\n\n")
+    output_file.write('next\n\n')
 
 
 def generateurl(url, output_file):
@@ -63,12 +87,18 @@ def generateurl(url, output_file):
     output_file -- an output text file
     """
 
-    output_file.write("edit %s\n" % url)
-    output_file.write("set color 1\n")
-    output_file.write("set type fqdn\n")
-    output_file.write("set fqdn %s\n" % url)
-    output_file.write("next\n\n")
+    output_file.write('edit %s\n' % url)
+    output_file.write('set color 1\n')
+    output_file.write('set type fqdn\n')
+    output_file.write('set fqdn %s\n' % url)
+    output_file.write('next\n\n')
 
 
 if __name__ == '__main__':
-    Main()
+    main()
+
+
+# TO DO:
+# Add UPX Compression
+# Add to PATH
+# Run from
