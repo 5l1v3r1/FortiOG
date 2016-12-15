@@ -7,7 +7,7 @@ from ipaddress import IPv4Network
 
 def Main():
     """ Main Prgram """
-    #Parser for user CLI interaction
+    # Parser for user CLI interaction
     parser = ArgumentParser(
         description='Provided a list of IP addresses or URL\'s, format the proper fortigate commands to create them '
                     'and output to a file within the current working directory.\n'
@@ -33,7 +33,7 @@ def Main():
     txt_file = regex_create(r"\.txt")
     csv_file = regex_create(r"\.csv")
 
-    #Check if the user submitted a csv or txt file
+    # Check if the user submitted a csv or txt file
     if txt_file.search(args.File) is not None:
         txt_mode(args.VDOM, args.File)
     elif csv_file.search(args.File) is not None:
@@ -42,6 +42,7 @@ def Main():
     else:
         print("Please retry with a valid file type")
 
+
 def txt_mode(vdom, file_in):
     """
     Function created to handle simple text files
@@ -49,32 +50,33 @@ def txt_mode(vdom, file_in):
     vdom -- the user input vdom
     file_in -- the user input file
     """
-    #Read in users list of parameters
+    # Read in users list of parameters
     with open(file_in, 'r') as input_file:
         array = input_file.read().splitlines()
 
-    #Create a new file using the users parameters
+    # Create a new file using the users parameters
     with open(vdom + '.txt', 'w') as output_file:
         header(vdom, output_file)
         for element in array:
             ip_addr = ip_check(element)
 
-            #Create a name for an ip address, or use the users url string
+            # Create a name for an ip address, or use the users url string
             if ip_addr[1] == 'ip':
                 name = ip_addr[0].with_prefixlen
             else:
                 name = ip_addr[0]
 
-            #Generate entry
+            # Generate entry
             generate_name(name, output_file)
             if ip_addr[1] == 'ip':
                 generate_ip(ip_addr[0], output_file)
             else:
                 generate_url(ip_addr[0], output_file)
 
-    #print the users created file
+    # print the users created file
     with open(vdom + '.txt', 'r') as finished_file:
         print(finished_file.read())
+
 
 def csv_mode(vdom, file_in):
     """
@@ -90,41 +92,44 @@ def csv_mode(vdom, file_in):
     ip_regex = regex_create(
         r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)")
 
-    #Read the user file, and create variable values depending on if a field is filled in
+    # Read the user file, and create variable values depending on if a field
+    # is filled in
     with open(file_in, 'r') as input_file:
         params = reader(input_file)
         for row in params:
             ip_name = None
-            #Create a 5 element array if the user did not provide a file with enough rows
+            # Create a 5 element array if the user did not provide a file with
+            # enough rows
             if len(row) != 5:
                 for i in range(0, (5 - len(row))):
                     row.append('')
 
-            #Exit if there are too many rows in proivded .csv
+            # Exit if there are too many rows in proivded .csv
             if len(row) > 5:
                 print("error: please specify a .csv with 5 or less fields")
                 raise SystemExit
 
-            #Check to see if the user provides a subnet mask in cell column 2
+            # Check to see if the user provides a subnet mask in cell column 2
             if row[1] is not '' and ip_regex.search(row[1]) is not None:
                 ip_addr = '%s/%s' % (row[0], row[1])
                 ip_name = IPv4Network(ip_addr)
             else:
                 ip_addr = row[0]
-            #Check to see if the user provides a custom name
+            # Check to see if the user provides a custom name
             if row[2] is not '':
                 name = row[2]
             elif ip_name is not None:
                 name = ip_name
             else:
                 name = row[0]
-            #Check to see if the user provides an interface,
-            #and make sure they also provide the necessary interface parameters
+            # Check to see if the user provides an interface,
+            # and make sure they also provide the necessary interface
+            # parameters
             if row[3] is not '':
                 interface = row[3]
             else:
                 interface = None
-            #Check to see if the user provides a comment
+            # Check to see if the user provides a comment
             if row[4] is not '':
                 comment = row[4]
             else:
@@ -133,7 +138,7 @@ def csv_mode(vdom, file_in):
             temp = [ip_addr, name, interface, comment]
             array.append(temp)
 
-    #Create a .txt file using the users parameters
+    # Create a .txt file using the users parameters
     with open(vdom + '.txt', 'w') as output_file:
         header(vdom, output_file)
         for row in array:
@@ -145,7 +150,7 @@ def csv_mode(vdom, file_in):
             else:
                 name = row[1]
 
-            #Generate Entry
+            # Generate Entry
             generate_name(name, output_file)
             if row[2] is not None:
                 generate_interface(row[2], output_file)
@@ -154,9 +159,10 @@ def csv_mode(vdom, file_in):
             else:
                 generate_url(ip_addr[0], output_file)
 
-    #Print the users created file
+    # Print the users created file
     with open(vdom + '.txt', 'r') as finished_file:
         print(finished_file.read())
+
 
 def ip_check(ip_addr):
     """
@@ -174,12 +180,12 @@ def ip_check(ip_addr):
         r"^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)")
 
     try:
-        #Create an IP object if possible
+        # Create an IP object if possible
         ip_addr = IPv4Network(ip_addr)
         return (ip_addr, 'ip')
     except ValueError:
-        #If the user provides a string that looks like an IP,
-        #ask if it is, and if they respond yes, prompt for the IP again.
+        # If the user provides a string that looks like an IP,
+        # ask if it is, and if they respond yes, prompt for the IP again.
         if ip_regex.search(ip_addr) is not None:
             y_or_n = input(
                 "Is " + ip_addr + " supposed to be an ip address? y | [n]: ") or "n"
@@ -187,13 +193,14 @@ def ip_check(ip_addr):
             ip_addr = input(
                 "Please specify an IP/CIDR network address: ")
             ip_check(ip_addr)
-        #Return a URL
+        # Return a URL
         else:
             return (ip_addr, 'url')
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 #                      Text Generation Methods
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
+
 
 def header(vdom, output_file):
     """
@@ -207,6 +214,7 @@ def header(vdom, output_file):
     output_file.write("edit %s\n" % str(vdom))
     output_file.write("config firewall address\n\n")
 
+
 def generate_name(name, output_file):
     """
     Generates the name line for an address object
@@ -216,6 +224,7 @@ def generate_name(name, output_file):
     """
 
     output_file.write("edit \"%s\"\n" % name)
+
 
 def generate_interface(interface, output_file):
     """
@@ -227,6 +236,7 @@ def generate_interface(interface, output_file):
 
     output_file.write("set associated-interface \"%s\"\n" % (interface))
 
+
 def generate_comment(comment, output_file):
     """
     Generates the interface line for an address object.
@@ -235,6 +245,7 @@ def generate_comment(comment, output_file):
     output_file -- an output text file
     """
     output_file.write("set comment \"%s\"\n" % (comment))
+
 
 def generate_ip(ip_addr, output_file):
     """
