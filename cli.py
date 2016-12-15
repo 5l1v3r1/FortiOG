@@ -1,8 +1,8 @@
 #!/bin/python3
 from argparse import ArgumentParser, RawTextHelpFormatter
 from csv import reader
-from re import compile as regex_create
 from ipaddress import IPv4Network
+from re import compile as regex_create
 from time import strftime
 
 
@@ -50,6 +50,7 @@ def Main():
     elif csv_file.search(args.File) is not None and args.port is True:
         csv_mode(args.VDOM, args.File, 'port')
 
+    # Check if the user provided the i or p flag
     elif args.ip is False and args.port is False:
         print("Please specify -i or -p")
     else:
@@ -68,6 +69,7 @@ def txt_mode(vdom, file_in, mode):
     file_in -- the user input file
     mode -- Accepts 'ip' or 'port' for address or service objects
     """
+    line = 1
     # Read in users list of parameters
     with open(file_in, 'r') as input_file:
         array = input_file.read().splitlines()
@@ -88,7 +90,7 @@ def txt_mode(vdom, file_in, mode):
         for element in array:
             # Address Groups
             if mode == 'ip':
-                ip_addr = ip_check(element)
+                ip_addr = ip_check(element, line)
 
                 # Create a name for an ip address, or use the users url string
                 if ip_addr[1] == 'ip':
@@ -107,11 +109,12 @@ def txt_mode(vdom, file_in, mode):
 
             # Service Groups
             elif mode == 'port':
-                port = port_check(element)
+                port = port_check(element, line)
                 generate_name('tcp_udp_' + port, output_file, True)
                 generate_service(output_file, 'tcp', port)
                 generate_service(output_file, 'udp', port)
                 generate_end(output_file)
+            line += 1
 
     # Print the users created file
     with open(vdom + '.txt', 'r') as finished_file:
@@ -141,7 +144,7 @@ def csv_mode(vdom, file_in, mode):
         params = reader(input_file)
         for row in params:
             default_name = None
-            # Create a 5 element array if the user did not provide a file with
+            # Create a 5 element array if the user did not provide a csv with
             # enough rows
             if len(row) != 5:
                 for i in range(0, (5 - len(row))):
@@ -154,32 +157,46 @@ def csv_mode(vdom, file_in, mode):
 
             # Address object generation specific code
             if mode == 'ip':
+                # Check if the user provided a netmask.
+                # If so, combine the netmask and IP into an IPNetwork object
                 if row[1] is not '' and ip_regex.search(row[1]):
                     ip_addr = '%s/%s' % (row[0], row[1])
-                    if row[3] is not '':
+                    # If the user did not provide a name, create a default one
+                    # from the network object
+                    if row[3] is '':
                         default_name = IPv4Network(ip_addr)
+                # If the user did not provided a IP/CIDR, prepare it for
+                # appending
                 else:
                     ip_addr = row[0]
-                    if row[3] is not '':
+                    # Check if the user provided a custom name.
+                    # If not, create a network object for one for IPs, or use
+                    # the URL provided.
+                    if row[3] is '' and ip_regex.search(ip_addr):
                         default_name = IPv4Network(ip_addr)
+                    elif row[3] is '':
+                        default_name = row[0]
 
                 # Check to see if the user provides an interface,
-                # and make sure they also provide the necessary interface
-                # parameters
                 if row[2] is not '':
                     interface = row[2]
                 else:
                     interface = None
 
-            # Service object generation specific code
+            # Service object generation specific code'
             if mode == 'port':
-                protocol = protocol_check(row[0], row[1] + row[2])
-                line += 1
-                dst_port = port_check(row[1])
+                # Check the protocol to ensure its valid, otherwise ask the
+                # user to specify one.
+                protocol = protocol_check(row[0], line)
+                # Verify a dst_port was provided, and check if a src_port was
+                # as well
+                dst_port = port_check(row[1], line)
                 if row[2] is not '':
-                    src_port = port_check(row[2])
+                    src_port = port_check(row[2], line)
                 else:
                     src_port = None
+                # If no object name was provided, generate one from the
+                # protocol & dst_port
                 if row[3] is '':
                     default_name = protocol + "_" + dst_port
 
@@ -203,6 +220,7 @@ def csv_mode(vdom, file_in, mode):
             elif mode == 'port':
                 temp = [protocol, dst_port, src_port, name, comment]
             array.append(temp)
+            line += 1
 
     # If the user did not provide a vdom, generate a timestamp to use as a
     # default name instead
@@ -212,14 +230,18 @@ def csv_mode(vdom, file_in, mode):
         edit_vdom = False
 
     # Create a .txt file using the users parameters
+    # Address Object Creation
     if mode == 'ip':
         with open(vdom + '.txt', 'w') as output_file:
+            # If there is no vdom, create a header without vdom commands
             if edit_vdom is False:
                 header(vdom, output_file, mode, edit_vdom)
             else:
                 header(vdom, output_file, mode)
+
             for row in array:
-                ip_addr = ip_check(row[0])
+                # Create an IPv4Network object, or a url
+                ip_addr = ip_check(row[0], line)
                 if ip_addr[1] == 'ip' and row[1] is None:
                     name = ip_addr[0].with_prefixlen
                 elif array[1] is None:
@@ -236,7 +258,9 @@ def csv_mode(vdom, file_in, mode):
                 else:
                     generate_url(ip_addr[0], output_file)
                 generate_end(output_file)
+                line += 1
 
+    # Service Object Creation
     elif mode == 'port':
         with open(vdom + '.txt', 'w') as output_file:
             header(vdom, output_file, mode)
@@ -261,15 +285,16 @@ def csv_mode(vdom, file_in, mode):
 # ------------------------------------------------------------------------------
 
 
-def ip_check(ip_addr):
+def ip_check(ip_addr, line):
     """
     Checks if a given entry is an IP address or URL.
     Returns an IP if an object can be created using ipaddress.IPv4Network.
     If the string appears to look like an IP, but is formatted wrong,
-    the user is prompted
-    Otherwise returns a string, which should be a url
+    the user is prompted.
 
     ip_addr -- String to be tested.
+
+    Returns (IP/URL, 'ip'/'url')
     """
 
     y_or_n = "n"
@@ -285,47 +310,65 @@ def ip_check(ip_addr):
         # ask if it is, and if they respond yes, prompt for the IP again.
         if ip_regex.search(ip_addr) is not None:
             y_or_n = input(
-                "Is " + ip_addr + " supposed to be an ip address? y | [n]: ") or "n"
+                "Is %s on line %s supposed to be an ip address? y | [n]: " % (ip_addr, line)) or "n"
         if y_or_n == "y":
             ip_addr = input(
-                "Please specify an IP/CIDR network address: ")
-            ip_check(ip_addr)
+                "Please specify a network address using CIDR notation: ")
+            ip_check(ip_addr, line)
         # Return a URL
         else:
             return (ip_addr, 'url')
 
 
-def port_check(port):
+def port_check(port, line):
+    """
+    Checks if a provided string is a valid port between 1-65535,
+    or range with end points between 1-65535.
+
+    port -- Integer to be tested.
+    line -- A count of how many lines in a file the user has been through
+
+    Returns a valid port as a string.
+    """
+    # Regex checking for a port range, Ex. 123-456
     port_range_regex = regex_create(
         r"^([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])(-([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?$")
+    # If a provided string is a digit, check its a valid port, or prompt the
+    # user for one
     if port.isdigit() is True:
         test = int(port)
         if test > 0 and test <= 65535:
             return port
         else:
             port = input(
-                "%s is invalid.  Please input a valid port from 1-65535, or range using " % (port))
-            port = port_check(port)
+                "%s is invalid.  Please input a valid port from 1-65535, or range using a -:  " % (port))
+            port = port_check(port, line)
             return port
 
+    # Check a string against the port range regex, prompt user on invalid port
     elif port_range_regex.search(port):
         return port
     else:
         port = input(
-            "%s is invalid.  Please input a valid port from 1-65535, or range using " % (port))
-        port = port_check(port)
+            "%s is invalid.  Please input a valid port from 1-65535, or range using a -: " % (port))
+        port = port_check(port, line)
         return port
 
 
 def protocol_check(protocol, line):
-    tcp_regex = regex_create(r"tcp")
-    udp_regex = regex_create(r"udp")
-    tcp_udp_regex = regex_create(r"both")
-    if tcp_regex.search(protocol) or udp_regex.search(protocol) or tcp_udp_regex.search(protocol):
+    """
+    Provided a user string, ensure it is a valid protocol
+
+    protocol -- Checks for 'tcp', 'udp', 'both' (tcp & udp)
+    line -- A count of how many lines in a file the user has been through
+
+    Returns protocol
+    """
+    if protocol == 'tcp' or protocol == 'udp' or protocol == 'both':
         return protocol
     else:
         protocol = input(
-            "%s is an invalid protocol. Please enter a valid protocol for line %s" % (protocol, line))
+            "%s is an invalid protocol. Please enter a valid protocol for line %s: " % (protocol, line))
         protocol = protocol_check(protocol, line)
         return protocol
 
@@ -358,7 +401,7 @@ def generate_name(name, output_file, service=False):
 
     name -- A name, either user provided or automatically generated
     output_file -- The file to be written to
-    service -- Optional boolean for custom services, defaults to not set a protocol
+    service -- Set to True for custom service objects, (Optional)
     """
 
     output_file.write("edit \"%s\"\n" % name)
@@ -421,7 +464,7 @@ def generate_service(output_file, protocol, dst_port, src_port=None):
     src_port -- Source port(s) (Optional)
     """
 
-    if src_port is None and protocol == 'tcp' or protocol == 'udp':
+    if src_port is None and (protocol == 'tcp' or protocol == 'udp'):
         output_file.write("set %s-portrange %s\n" % (protocol, dst_port))
     else:
         output_file.write("set %s-portrange %s:%s\n" %
