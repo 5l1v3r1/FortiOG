@@ -1,16 +1,24 @@
-Provided a vdom and a list of ips and urls, generate the necessary output to paste into a fortigate.
+Provided a list of ports or IPs & URLs, mass generate Fortigate firewall objects.
 
 The input file can be either a .txt or .csv.
 
 .txt files should contain only your entries, each on its own line, and no extra characters.
-A valid .txt entry is either an IP/CIDR (ex. 192.168.1.0/24), an IP/Netmask (ex. 192.168.1.0/255.255.255.0), or a URL (ex. www.purple.com).
+A valid .txt entry is either an IP/CIDR (ex. 192.168.1.0/24), an IP/Netmask (ex. 192.168.1.0/255.255.255.0), a URL (ex. www.purple.com), or a valid port between 1-65535.
 
-.csv files should contain 5 fields:
+.csv files should contain 5 fields.
+IP Address Fields:
 1. IP, IP/CIDR, IP/Netmask or URL
-2. Netmask (needed if you do not provide a CIDR in the previous field)
-3. Custom Name for the object
-4. Interface to attach object to
-5. Comment to label the object
+2. Netmask (needed if you do not provide a CIDR in the previous field) (Optional)
+3. Interface to attach object to (Optional)
+4. Custom Name for the object (Optional)
+5. Comment to label the object (Optional)
+
+Port Fields:
+1. A valid protocol (tcp/udp) or 'both' for tcp & udp.
+2. Destination port or port range (denoted with a -)
+3. Source port or port range (Optional)
+4. Custom name for the object (Optional)
+5. Comment to label the object (Optional)
 
 .csv's should be formatted similarly to an Excel .csv
 
