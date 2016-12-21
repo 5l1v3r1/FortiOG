@@ -1,9 +1,14 @@
+# Fortigate Address & Service Object Creator
+
+Usage: cli.py [-avs] File
+
 Provided a list of ports or IPs & URLs, mass generate Fortigate firewall objects.
 
 The input file can be either a .txt or .csv.
 
 .txt files should contain only your entries, each on its own line, and no extra characters.
 A valid .txt entry is either an IP/CIDR (ex. 192.168.1.0/24), an IP/Netmask (ex. 192.168.1.0/255.255.255.0), a URL (ex. www.purple.com), or a valid port between 1-65535.
+Ports CANNOT be mixed with IPs & URLs.
 
 .csv files should contain 5 fields.
 IP Address Fields:

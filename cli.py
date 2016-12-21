@@ -21,7 +21,7 @@ def main():
     parser.add_argument(
         '-v', '--VDOM', help='Specify the VDOM to which changes will be applied.\n\n', default=False)
     parser.add_argument(
-        '-f', '--File', help='Accepts two kinds of files, .txt & .csv. If no file is given, '
+        'File', help='Accepts two kinds of files, .txt & .csv. If no file is given, '
         'the file explorer will launch and you will be prompted to select one.\n'
         'Each type should be formatted differently.\n'
         '.txt: Each entry should be on its own line, formatted as IP/CIDR, IP/Netmask or a URL.\n'
