@@ -18,7 +18,7 @@
 #   +-------------------------------------------------------------------------+
 #
 #   For questions, comments, and suggestions please reach out to the authors at:
-#   brandonforces@gmail.com or bryce.zuccaro.gmail.com
+#   brandonforces@gmail.com or bryce.zuccaro@gmail.com
 
 
 from argparse import ArgumentParser, RawTextHelpFormatter
@@ -57,7 +57,7 @@ def main():
         'Comment to label the object\n\n'
         '.csv\'s should be formatted similarly to an Excel .csv')
     address_or_service = parser.add_mutually_exclusive_group()
-    address_or_service.add_argument('-a', '--address', default=False, action='store_true',
+    address_or_service.add_argument('-a', '--address', default=True, action='store_true',
                                     help='Create address objects.')
     address_or_service.add_argument('-s', '--service', default=False, action='store_true',
                                     help='Create service objects.')
