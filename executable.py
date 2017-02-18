@@ -22,7 +22,7 @@
 
 
 from argparse import ArgumentParser, RawTextHelpFormatter
-from csv import DictReader
+from csv import DictReader, reader
 from ipaddress import IPv4Network
 from os import getcwd, path, sep
 from re import compile as regex_create
@@ -203,9 +203,10 @@ def create_dictionary(file_in, mode):
     elif mode == 'service':
         fields = ['protocol', 'dst_port', 'src_port', 'name', 'comment']
 
-    with open(file_in, 'r') as input_file:
+    with open(file_in) as input_file:
         dict_reader = DictReader(input_file, fieldnames=fields, restval='')
         for row in dict_reader:
+            row.update({fieldname: value.strip() for (fieldname, value) in row.items()})
             dictionary.append(row)
 
     return dictionary
